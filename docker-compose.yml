@@ -1,0 +1,31 @@
+version: "3"
+services:
+  node-app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - MONGO_USER=username
+      - MONGO_PASSWORD=password
+      - SESSION_SECRET=secret
+    depends_on:
+      - mongo
+    command: node index.js
+
+  mongo:
+    image: mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=username
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - mongo-db:/data/db
+
+  redis:
+    image: redis
+
+volumes:
+  mongo-db:
