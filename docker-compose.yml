@@ -14,7 +14,6 @@ services:
       - SESSION_SECRET=secret
     depends_on:
       - mongo
-    command: node index.js
 
   mongo:
     image: mongo
