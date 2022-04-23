@@ -1,6 +1,7 @@
 const express = require('express')
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
+const createError = require('http-errors')
 
 const {
     MONGO_IP,
@@ -24,6 +25,8 @@ let redisClient = createClient({
 })
 
 const app = express()
+
+const searchRouter = require('./routes/searchRoutes')
 
 const MONGO_URL = `mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_IP}:${MONGO_PORT}/?authSource=admin`
 
@@ -59,7 +62,20 @@ app.use(bodyParser.urlencoded({ extended: true }))
 app.use(bodyParser.json())
 
 app.get('/', (req, res) => {
-    res.send('<h1>Hey Techlab</h1>')
+    res.send('<h1>Hey Techlab !</h1>')
+})
+
+app.use(searchRouter)
+
+app.use(function (req, res, next) {
+    next(createError(404))
+})
+
+app.use(function (err, req, res, next) {
+    res.locals.message = err.message
+    res.locals.error = req.app.get('env') === 'development' ? err : {}
+    res.status(err.status || 500)
+    res.json({ success: false, error: err })
 })
 
 const port = process.env.PORT || 8000
