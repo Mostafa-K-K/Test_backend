@@ -2,35 +2,25 @@ const express = require('express')
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
 const createError = require('http-errors')
+const { createClient } = require('redis')
 
 const {
-    MONGO_IP,
+    MONGO_HOST,
     MONGO_PORT,
     MONGO_USER,
     MONGO_PASSWORD,
 
-    REDIS_URL,
-    REDIS_PORT,
-    SESSION_SECRET,
+    REDIS_HOST,
+    REDIS_PORT
 } = require('./config/config')
 
-const { createClient } = require('redis')
-const session = require('express-session')
-let RedisStore = require('connect-redis')(session)
-
-let redisClient = createClient({
-    host: REDIS_URL,
-    port: REDIS_PORT,
-    legacyMode: true
-})
-
 const app = express()
-
+const authorize = require('./middleware/auth')
 const searchRouter = require('./routes/searchRoutes')
 
-const MONGO_URL = `mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_IP}:${MONGO_PORT}/?authSource=admin`
+const MONGO_URL = `mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/?authSource=admin`
 
-const connectWithRetry = () => {
+const connectWithRetryMongoose = () => {
     mongoose
         .connect(MONGO_URL, {
             useNewUrlParser: true,
@@ -42,21 +32,29 @@ const connectWithRetry = () => {
             setTimeout(connectWithRetry, 5000)
         })
 }
-connectWithRetry()
+connectWithRetryMongoose()
 
-app.use(
-    session({
-        store: new RedisStore({ client: redisClient }),
-        secret: SESSION_SECRET,
-        cookie: {
-            secure: false,
-            httpOnly: true,
-            maxAge: 30000
-        },
-        resave: false,
-        saveUninitialized: false
+const connectWithRedis = () => {
+    const client = createClient({
+        url: `redis://${REDIS_HOST}:${REDIS_PORT}`
     })
-)
+
+    client.on('error', (e) =>
+        console.log('REDIS CLIENT ERROR: ', e)
+    )
+
+    client.connect().then(() => {
+        console.log('Connected to redis successfully')
+    })
+
+    client.get('token')
+        .then(res => {
+            if (res) return
+            authorize()
+        })
+        .catch(console.log)
+}
+connectWithRedis()
 
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(bodyParser.json())

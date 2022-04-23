@@ -12,6 +12,8 @@ services:
       - MONGO_USER=username
       - MONGO_PASSWORD=password
       - SESSION_SECRET=secret
+    env_file:
+      - ./.env
     depends_on:
       - mongo
 
