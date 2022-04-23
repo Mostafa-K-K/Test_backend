@@ -16,6 +16,7 @@ const {
 
 const app = express()
 const authorize = require('./middleware/auth')
+const artistRouter = require('./routes/artistRoutes')
 const searchRouter = require('./routes/searchRoutes')
 
 const MONGO_URL = `mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/?authSource=admin`
@@ -34,7 +35,7 @@ const connectWithRetryMongoose = () => {
 }
 connectWithRetryMongoose()
 
-const connectWithRedis = () => {
+const connectWithRedis = async () => {
     const client = createClient({
         url: `redis://${REDIS_HOST}:${REDIS_PORT}`
     })
@@ -47,12 +48,8 @@ const connectWithRedis = () => {
         console.log('Connected to redis successfully')
     })
 
-    client.get('token')
-        .then(res => {
-            if (res) return
-            authorize()
-        })
-        .catch(console.log)
+    let token = await client.get('token')
+    if (!token) await authorize(client)
 }
 connectWithRedis()
 
@@ -63,6 +60,7 @@ app.get('/', (req, res) => {
     res.send('<h1>Hey Techlab !</h1>')
 })
 
+app.use(artistRouter)
 app.use(searchRouter)
 
 app.use(function (req, res, next) {

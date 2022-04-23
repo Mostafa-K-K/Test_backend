@@ -1,11 +1,9 @@
 const request = require('request')
-const { redis } = require('../redis')
 
-const authorize = async () => {
-    var token = ''
+const authorize = async (redis) => {
     var client_id = process.env.CLIENT_ID
     var client_secret = process.env.CLIENT_SECRET
-    var FETCH_URL = `${process.env.SPOTIFY_URL}/api/token`
+    var FETCH_URL = `${process.env.SPOTIFY_URL_ACCOUNT}`
     let Authorization = `Basic ${new Buffer.from(client_id + ':' + client_secret).toString('base64')}`
 
     var authOptions = {
@@ -17,8 +15,9 @@ const authorize = async () => {
 
     request.post(authOptions, async function (error, response, body) {
         if (!error && response.statusCode === 200) {
-            token = body.access_token
-            await redis?.set("token", token, "EX", 3)
+            let token = body.access_token
+            let expires = body.expires_in
+            await redis.SETEX('token', expires, token)
         }
     })
 }
