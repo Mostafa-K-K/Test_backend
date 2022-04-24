@@ -13,10 +13,32 @@ class SearchController {
     getArtistSearch = async (req, res, next) => {
         let { name } = req.body;
         Search
-            .find({ searchText: { $regex: new RegExp(name) } })
+            .aggregate([
+                { $match: { searchText: { $regex: new RegExp(name) } } },
+                {
+                    $group: {
+                        _id: null,
+                        searches: { $push: '$searchText' },
+                        artists: { $push: '$artists' },
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        searches: { $setUnion: ['$searches'] },
+                        artists: {
+                            $reduce: {
+                                input: '$artists',
+                                initialValue: [],
+                                in: { $setUnion: ['$$value', '$$this'] }
+                            }
+                        }
+                    }
+                }
+            ])
             .exec((err, result) => {
                 if (err) return next(err)
-                res.json({ success: true, result: { count: result.length, result } })
+                res.json({ success: true, result: result[0] })
             })
     }
 }
